@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Lost & Found</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#f2f2f2;
+    text-align:center;
+}
+.container{
+    width:500px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    margin-top:30px;
+    border-radius:10px;
+}
+input{
+    width:90%;
+    padding:10px;
+    margin:8px;
+}
+button{
+    padding:10px 20px;
+    margin:5px;
+    background:blue;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+.card{
+    background:#eee;
+    margin:10px;
+    padding:10px;
+    border-radius:10px;
+}
+img{
+    width:150px;
+    height:150px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Lost & Found Portal</h2>
+
+<input type="text" id="itemId" placeholder="Item ID">
+
+<input type="text" id="item" placeholder="Item">
+
+<input type="text" id="location" placeholder="Location">
+
+<input type="text" id="person" placeholder="Concern Person">
+
+<input type="file" id="image" accept="image/*">
+
+<br>
+
+<button onclick="reportItem()">Report</button>
+
+<hr>
+
+<input type="text" id="search" placeholder="Search Item">
+
+<button onclick="searchItem()">Search</button>
+
+<button onclick="getItems()">Show All</button>
+
+<button onclick="deleteItem()">Delete</button>
+
+<hr>
+
+<div id="result"></div>
+
+</div>
+
+<script>
+
+const API = "https://1843hv2zfl.execute-api.ap-south-1.amazonaws.com";
+
+// ---------------- REPORT ITEM ----------------
+
+async function reportItem() {
+
+    try {
+
+        const file = document.getElementById("image").files[0];
+
+        if (!file) {
+            alert("Please select an image.");
+            return;
+        }
+
+        // Get file extension
+        const extension = file.name.split(".").pop();
+
+        // Get presigned upload URL
+        const uploadResponse = await fetch(API + "/upload-url?ext=" + extension);
+        const uploadData = await uploadResponse.json();
+
+        // Upload image to S3
+        await fetch(uploadData.uploadURL, {
+            method: "PUT",
+            headers: {
+                "Content-Type": file.type
+            },
+            body: file
+        });
+
+        // Save item details in DynamoDB
+        const response = await fetch(API + "/report", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                itemId: document.getElementById("itemId").value,
+
+                item: document.getElementById("item").value,
+
+                location: document.getElementById("location").value,
+
+                concernPerson: document.getElementById("person").value,
+
+                image: uploadData.imageURL
+
+            })
+
+        });
+
+        const data = await response.json();
+
+        alert(data.message);
+
+        getItems();
+
+    }
+    catch (err) {
+
+        console.log(err);
+
+        alert("Upload Failed");
+
+    }
+
+}
+
+// ---------------- GET ALL ITEMS ----------------
+
+function getItems() {
+
+    fetch(API + "/items")
+
+        .then(res => res.json())
+
+        .then(showData)
+
+        .catch(err => console.log(err));
+
+}
+
+// ---------------- SEARCH ITEM ----------------
+
+function searchItem() {
+
+    const name = document.getElementById("search").value;
+
+    fetch(API + "/item?name=" + name)
+
+        .then(res => res.json())
+
+        .then(showData)
+
+        .catch(err => console.log(err));
+
+}
+
+// ---------------- DELETE ITEM ----------------
+
+function deleteItem() {
+
+    const name = document.getElementById("search").value;
+
+    fetch(API + "/item?name=" + name, {
+
+        method: "DELETE"
+
+    })
+
+        .then(res => res.json())
+
+        .then(data => {
+
+            alert(data.message);
+
+            getItems();
+
+        })
+
+        .catch(err => console.log(err));
+
+}
+
+// ---------------- DISPLAY ITEMS ----------------
+
+function showData(data) {
+
+    let html = "";
+
+    data.forEach(item => {
+
+        html += `
+
+        <div class="card">
+
+            <h3>${item.item}</h3>
+
+            <p><b>ID:</b> ${item.itemId}</p>
+
+            <p><b>Location:</b> ${item.location}</p>
+
+            <p><b>Concern Person:</b> ${item.concernPerson}</p>
+
+            <img src="${item.image}" width="150">
+
+        </div>
+
+        `;
+
+    });
+
+    document.getElementById("result").innerHTML = html;
+
+}
+</script>
+
+</body>
+</html>
