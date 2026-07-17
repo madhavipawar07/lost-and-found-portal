@@ -1,7 +1,5 @@
 # lost-and-found-portal
 
-# Lost & Found Portal
-
 ## Overview
 
 The Lost & Found Portal is a cloud-based web application that enables users to report, search, view, and manage lost or found items through a simple web interface. The application is hosted as a static website on Amazon S3 and uses AWS serverless services to store and retrieve item information.
